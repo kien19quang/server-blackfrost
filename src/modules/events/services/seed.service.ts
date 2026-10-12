@@ -5,7 +5,7 @@ import { EventEntity } from '../../../schemas/event.schema';
 import { FeedbackNote } from '../../../schemas/feedback.schema';
 import { AttendanceStatus as A, EVENT_ID } from '../types/event.type';
 
-const SEED_EVENT = {
+export const SEED_EVENT = {
   eventId: EVENT_ID,
   name: 'Saturday Walk',
   venue: 'Harbour Community Club',
@@ -19,7 +19,7 @@ const SEED_EVENT = {
   ],
 };
 
-const SEED_FEEDBACK = [
+export const SEED_FEEDBACK = [
   'The walk was enjoyable, but the meeting point was difficult to find.',
   'Clear directions. I had no trouble finding the group.',
   'Could we start earlier next time?',

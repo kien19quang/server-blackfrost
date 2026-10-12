@@ -1,0 +1,55 @@
+import { z } from 'zod';
+import { ThemeKind } from '../types/briefing.type';
+
+const feedbackIdSchema = z.string().regex(/^F\d{2}$/, 'feedbackId must look like F01');
+const textSchema = z.string().trim().min(1, 'text must not be empty');
+const itemInputSchema = z.strictObject({ text: textSchema, feedbackIds: z.array(feedbackIdSchema) });
+const themeInputSchema = itemInputSchema.extend({ kind: z.enum(ThemeKind).default(ThemeKind.Fact) });
+
+// Model output: also the schema sent to the provider as structured output (all fields required).
+export const aiBriefingSchema = z.strictObject({
+  overview: textSchema,
+  themes: z.array(z.strictObject({ ...itemInputSchema.shape, kind: z.enum(ThemeKind) })),
+  conflicts: z.array(itemInputSchema),
+  followUps: z.array(itemInputSchema),
+});
+
+export const updateBriefingSchema = z.strictObject({
+  overview: textSchema,
+  themes: z.array(themeInputSchema),
+  conflicts: z.array(itemInputSchema),
+  followUps: z.array(itemInputSchema),
+});
+export type UpdateBriefingDto = z.infer<typeof updateBriefingSchema>;
+
+const itemSchema = z.strictObject({
+  text: z.string(),
+  feedbackIds: z.array(z.string()),
+  unverifiedFeedbackIds: z.array(z.string()).describe('IDs not in F01–F08: not evidence, computed on read'),
+});
+const countsSchema = z.strictObject({
+  registered: z.number().int(),
+  attended: z.number().int(),
+  absent: z.number().int(),
+  notRecorded: z.number().int(),
+});
+const briefingSchema = z.strictObject({
+  overview: z.string(),
+  attendanceSnapshot: countsSchema.describe('Counts at generation time, set by code'),
+  themes: z.array(itemSchema.extend({ kind: z.enum(ThemeKind) })),
+  conflicts: z.array(itemSchema),
+  followUps: z.array(itemSchema),
+  model: z.string(),
+  generatedAt: z.string().describe('ISO date'),
+  attendanceVersion: z.number().int(),
+  editedByHuman: z.boolean(),
+  updatedAt: z.string().describe('ISO date'),
+});
+
+export const briefingStateSchema = z.strictObject({
+  current: briefingSchema.nullable(),
+  draft: briefingSchema.nullable(),
+  stale: z.boolean().describe('current.attendanceVersion differs from the event attendanceVersion'),
+  attendanceVersion: z.number().int(),
+});
+export type BriefingStateDto = z.infer<typeof briefingStateSchema>;

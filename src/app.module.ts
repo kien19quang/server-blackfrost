@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AllExceptionsFilter } from './core/exceptions/all-exceptions.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { validationPipe } from './core/shared/validation.pipe';
+import { BriefingModule } from './modules/briefing/briefing.module';
 import { EventModule } from './modules/events/event.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { HealthModule } from './modules/health/health.module';
@@ -19,6 +20,7 @@ import { HealthModule } from './modules/health/health.module';
     HealthModule,
     EventModule,
     FeedbackModule,
+    BriefingModule,
   ],
   // Global pipe/interceptor/filter are registered here (not in main.ts) so e2e tests built from
   // AppModule run through exactly the same pipeline.

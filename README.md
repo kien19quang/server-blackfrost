@@ -21,3 +21,9 @@ API (envelope `{ data }`, schemas in Swagger `/api-docs`):
 - `GET /events/E101` → event, members, `counts` (computed in code; `notRecorded` ≠ `absent`), `attendanceVersion`.
 - `PUT /events/E101/attendance` body `{ members: [{ memberId, attendance }] }` (`attended | absent | not_recorded`); 400 on unknown member/invalid value/duplicates; bumps `attendanceVersion`; returns the updated event.
 - `GET /feedback` → `[{ feedbackId, text }]`, read-only.
+
+## AI briefing
+
+- `AI_PROVIDER`: `openai` (real model, `AI_MODEL`, key in `AI_API_KEY` or `OPENAI_API_KEY`), `mock` (no network) or `fail` (every generate returns 502 `BRIEFING_GENERATION_FAILED`).
+- `yarn check:ai` makes one real model call on the seed data and prints the validated briefing plus any invented feedback IDs.
+- `yarn reset` also clears briefings.
