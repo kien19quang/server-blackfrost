@@ -54,7 +54,7 @@ describe('Briefing (e2e)', () => {
   const attend = () =>
     http()
       .put('/events/E101/attendance')
-      .send({ members: [{ memberId: 'M03', attendance: 'attended' }] })
+      .send({ updates: [{ memberId: 'M03', status: 'attended' }] })
       .expect(200);
 
   beforeAll(async () => {
@@ -127,6 +127,15 @@ describe('Briefing (e2e)', () => {
       attendanceSnapshot: { attended: 2, notRecorded: 0 },
     });
     expect(res.stale).toBe(true);
+  });
+
+  it('is not stale when an attendance save changes nothing', async () => {
+    await generate().expect(201);
+    await http()
+      .put('/events/E101/attendance')
+      .send({ updates: [{ memberId: 'M01', status: 'attended' }] })
+      .expect(200);
+    expect(data(await http().get('/briefing'))).toMatchObject({ stale: false, attendanceVersion: 0 });
   });
 
   it('generating again overwrites the draft, never current', async () => {

@@ -9,8 +9,8 @@ interface IBody {
   data: {
     attendanceVersion: number;
     counts: { registered: number; attended: number; absent: number; notRecorded: number };
-    members: unknown[];
-  } & { feedbackId: string; text: string }[];
+    members: { id: string }[];
+  } & { id: string; text: string }[];
   code?: string;
 }
 const b = (r: request.Response) => r.body as IBody;
@@ -33,7 +33,7 @@ describe('Events + Feedback (e2e)', () => {
   it('GET /events/E101 returns seed data with counts and version', async () => {
     const res = await http().get('/events/E101').expect(200);
     expect(b(res).data).toMatchObject({
-      eventId: 'E101',
+      id: 'E101',
       attendanceVersion: 0,
       counts: { registered: 4, attended: 1, absent: 2, notRecorded: 1 },
     });
@@ -41,13 +41,14 @@ describe('Events + Feedback (e2e)', () => {
   });
 
   it('GET /events/E999 returns 404', async () => {
-    await http().get('/events/E999').expect(404);
+    const res = await http().get('/events/E999').expect(404);
+    expect(b(res).code).toBe('EVENT_NOT_FOUND');
   });
 
   it('PUT attendance saves, recomputes counts, bumps version, persists', async () => {
     const res = await http()
       .put('/events/E101/attendance')
-      .send({ members: [{ memberId: 'M03', attendance: 'attended' }] })
+      .send({ updates: [{ memberId: 'M03', status: 'attended' }] })
       .expect(200);
     expect(b(res).data.attendanceVersion).toBe(1);
     expect(b(res).data.counts).toEqual({ registered: 4, attended: 2, absent: 2, notRecorded: 0 });
@@ -56,40 +57,63 @@ describe('Events + Feedback (e2e)', () => {
   });
 
   it.each([
-    ['unknown member', { members: [{ memberId: 'M99', attendance: 'absent' }] }],
-    ['bad status', { members: [{ memberId: 'M01', attendance: 'late' }] }],
-    ['empty list', { members: [] }],
+    ['unknown member', { updates: [{ memberId: 'M99', status: 'absent' }] }],
+    ['bad status', { updates: [{ memberId: 'M01', status: 'late' }] }],
+    ['empty list', { updates: [] }],
     [
       'duplicate member',
       {
-        members: [
-          { memberId: 'M01', attendance: 'absent' },
-          { memberId: 'M01', attendance: 'attended' },
+        updates: [
+          { memberId: 'M01', status: 'absent' },
+          { memberId: 'M01', status: 'attended' },
         ],
       },
     ],
-    ['extra field', { members: [{ memberId: 'M01', attendance: 'absent' }], foo: 1 }],
+    ['extra field', { updates: [{ memberId: 'M01', status: 'absent' }], foo: 1 }],
   ])('PUT attendance rejects %s with 400 and saves nothing', async (_name, body) => {
-    await http().put('/events/E101/attendance').send(body).expect(400);
+    const bad = await http().put('/events/E101/attendance').send(body).expect(400);
+    if (_name === 'unknown member') expect(b(bad).code).toBe('ATTENDANCE_MEMBER_NOT_FOUND');
     const res = await http().get('/events/E101').expect(200);
     expect(b(res).data.attendanceVersion).toBe(0);
   });
 
-  it('PUT attendance returns 503 EVENT_SAVE_FAILED when SIMULATE_SAVE_FAILURE=true and saves nothing', async () => {
+  it('PUT attendance returns 503 SAVE_FAILED_SIMULATED when SIMULATE_SAVE_FAILURE=true and saves nothing', async () => {
     process.env.SIMULATE_SAVE_FAILURE = 'true';
     const res = await http()
       .put('/events/E101/attendance')
-      .send({ members: [{ memberId: 'M01', attendance: 'absent' }] })
+      .send({ updates: [{ memberId: 'M01', status: 'absent' }] })
       .expect(503);
-    expect(b(res).code).toBe('EVENT_SAVE_FAILED');
+    expect(b(res).code).toBe('SAVE_FAILED_SIMULATED');
     delete process.env.SIMULATE_SAVE_FAILURE;
     const after = await http().get('/events/E101').expect(200);
     expect(b(after).data.counts.attended).toBe(1);
   });
 
+  it('PUT attendance with no real change keeps the version', async () => {
+    const res = await http()
+      .put('/events/E101/attendance')
+      .send({ updates: [{ memberId: 'M01', status: 'attended' }] })
+      .expect(200);
+    expect(b(res).data.attendanceVersion).toBe(0);
+  });
+
+  it('PUT attendance bumps the version once per request with several changes', async () => {
+    const res = await http()
+      .put('/events/E101/attendance')
+      .send({
+        updates: [
+          { memberId: 'M01', status: 'attended' },
+          { memberId: 'M03', status: 'absent' },
+          { memberId: 'M02', status: 'attended' },
+        ],
+      })
+      .expect(200);
+    expect(b(res).data.attendanceVersion).toBe(1);
+  });
+
   it('GET /feedback returns F01–F08 in order', async () => {
     const res = await http().get('/feedback').expect(200);
-    expect(b(res).data.map((f: { feedbackId: string }) => f.feedbackId)).toEqual([
+    expect(b(res).data.map((f: { id: string }) => f.id)).toEqual([
       'F01',
       'F02',
       'F03',
@@ -105,7 +129,7 @@ describe('Events + Feedback (e2e)', () => {
   it('seed is idempotent: does not overwrite saved attendance', async () => {
     await http()
       .put('/events/E101/attendance')
-      .send({ members: [{ memberId: 'M01', attendance: 'absent' }] })
+      .send({ updates: [{ memberId: 'M01', status: 'absent' }] })
       .expect(200);
     await seed.seed();
     await seed.seed();
@@ -120,7 +144,7 @@ describe('Events + Feedback (e2e)', () => {
   it('reset restores the seed state', async () => {
     await http()
       .put('/events/E101/attendance')
-      .send({ members: [{ memberId: 'M01', attendance: 'absent' }] })
+      .send({ updates: [{ memberId: 'M01', status: 'absent' }] })
       .expect(200);
     await seed.reset();
     const res = await http().get('/events/E101').expect(200);

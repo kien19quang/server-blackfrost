@@ -10,6 +10,6 @@ export class FeedbackService {
 
   async list(): Promise<FeedbackListDto> {
     const notes = await this.feedbackModel.find().sort({ feedbackId: 1 }).lean();
-    return notes.map((n) => ({ feedbackId: n.feedbackId, text: n.text }));
+    return notes.map((n) => ({ id: n.feedbackId, text: n.text }));
   }
 }

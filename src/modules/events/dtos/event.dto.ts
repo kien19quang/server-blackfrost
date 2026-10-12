@@ -4,12 +4,12 @@ import { AttendanceStatus } from '../types/event.type';
 const attendanceSchema = z.enum(AttendanceStatus).describe('attended | absent | not_recorded');
 
 export const eventResponseSchema = z.strictObject({
-  eventId: z.string().describe('Always E101'),
-  name: z.string(),
+  id: z.string().describe('Always E101'),
+  title: z.string(),
   venue: z.string(),
   status: z.string(),
-  attendanceVersion: z.number().int().describe('Increases on every attendance save'),
-  members: z.array(z.strictObject({ memberId: z.string(), name: z.string(), attendance: attendanceSchema })),
+  attendanceVersion: z.number().int().describe('Increases by 1 on every attendance save that changes a status'),
+  members: z.array(z.strictObject({ id: z.string(), name: z.string(), attendance: attendanceSchema })),
   counts: z
     .strictObject({
       registered: z.number().int(),
@@ -22,8 +22,8 @@ export const eventResponseSchema = z.strictObject({
 export type EventResponseDto = z.infer<typeof eventResponseSchema>;
 
 export const updateAttendanceSchema = z.strictObject({
-  members: z
-    .array(z.strictObject({ memberId: z.string().min(1), attendance: attendanceSchema }))
+  updates: z
+    .array(z.strictObject({ memberId: z.string().min(1), status: attendanceSchema }))
     .min(1)
     .refine((items) => new Set(items.map((i) => i.memberId)).size === items.length, {
       message: 'Duplicate memberId',

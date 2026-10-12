@@ -39,11 +39,11 @@ export class BriefingService {
     const event = await this.eventService.get(EVENT_ID);
     const feedback = await this.feedbackService.list();
     const content = await this.callProvider({
-      eventName: event.name,
+      eventName: event.title,
       venue: event.venue,
-      members: event.members.map((m) => ({ memberId: m.memberId, name: m.name, attendance: m.attendance })),
+      members: event.members.map((m) => ({ memberId: m.id, name: m.name, attendance: m.attendance })),
       counts: event.counts,
-      feedback,
+      feedback: feedback.map((f) => ({ feedbackId: f.id, text: f.text })),
     });
     const now = new Date();
     const generated: IStoredBriefing = {
@@ -131,7 +131,7 @@ export class BriefingService {
 
   private async toState(doc: BriefingDocument): Promise<BriefingStateDto> {
     const [event, feedback] = await Promise.all([this.eventService.get(EVENT_ID), this.feedbackService.list()]);
-    const known = new Set(feedback.map((f) => f.feedbackId));
+    const known = new Set(feedback.map((f) => f.id));
     const item = <T extends IBriefingItem>(i: T) => ({
       ...i,
       unverifiedFeedbackIds: i.feedbackIds.filter((id) => !known.has(id)),

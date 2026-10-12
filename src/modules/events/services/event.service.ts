@@ -30,39 +30,42 @@ export class EventService {
   async updateAttendance(eventId: string, dto: UpdateAttendanceDto): Promise<EventResponseDto> {
     if (this.config.get('SIMULATE_SAVE_FAILURE') === 'true') {
       throw new ServiceUnavailableException('Saving is temporarily unavailable (simulated failure).', {
-        errorCode: 'EVENT_SAVE_FAILED',
+        errorCode: 'SAVE_FAILED_SIMULATED',
       });
     }
     const event = await this.find(eventId);
     const byId = new Map(event.members.map((m) => [m.memberId, m]));
-    const unknown = dto.members.filter((u) => !byId.has(u.memberId)).map((u) => u.memberId);
+    const unknown = dto.updates.filter((u) => !byId.has(u.memberId)).map((u) => u.memberId);
     if (unknown.length) {
       throw new BadRequestException(`Unknown memberId: ${unknown.join(', ')}`, {
-        errorCode: 'EVENT_UNKNOWN_MEMBER',
+        errorCode: 'ATTENDANCE_MEMBER_NOT_FOUND',
       });
     }
-    for (const u of dto.members) byId.get(u.memberId)!.attendance = u.attendance;
-    event.attendanceVersion += 1;
-    await event.save();
+    const changed = dto.updates.filter((u) => byId.get(u.memberId)!.attendance !== u.status);
+    if (changed.length) {
+      for (const u of changed) byId.get(u.memberId)!.attendance = u.status;
+      event.attendanceVersion += 1;
+      await event.save();
+    }
     return this.toDto(event);
   }
 
   private async find(eventId: string): Promise<EventDocument> {
-    if (eventId !== EVENT_ID) throw new NotFoundException('Event not found');
+    if (eventId !== EVENT_ID) throw new NotFoundException('Event not found', { errorCode: 'EVENT_NOT_FOUND' });
     const event = await this.eventModel.findOne({ eventId });
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Event not found', { errorCode: 'EVENT_NOT_FOUND' });
     return event;
   }
 
   private toDto(e: EventDocument): EventResponseDto {
     const members = e.members.map((m) => ({
-      memberId: m.memberId,
+      id: m.memberId,
       name: m.name,
       attendance: m.attendance,
     }));
     return {
-      eventId: e.eventId,
-      name: e.name,
+      id: e.eventId,
+      title: e.name,
       venue: e.venue,
       status: e.status,
       attendanceVersion: e.attendanceVersion,
