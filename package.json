@@ -13,6 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\" && prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "reset": "nest build && node dist/reset",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
