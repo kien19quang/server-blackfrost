@@ -39,6 +39,13 @@ class ScriptedProvider extends AiProvider {
     return this.next instanceof Error ? Promise.reject(this.next) : Promise.resolve(this.next);
   }
 }
+// Merge body that keeps nothing but the chosen overview: tests override the sections they care about.
+const pickNone = (overview: 'current' | 'draft') => ({
+  overview,
+  themes: { current: [], draft: [] },
+  conflicts: { current: [], draft: [] },
+  followUps: { current: [], draft: [] },
+});
 const content = (overview: string, feedbackIds: string[] = ['F01']) => ({
   overview,
   themes: [{ text: 'Theme', kind: 'opinion', feedbackIds }],
@@ -240,6 +247,95 @@ describe('Briefing (e2e)', () => {
     expect(data(await http().get('/briefing')).current?.overview).toBe('first');
   });
 
+  describe('draft/merge (coordinator picks items from both versions)', () => {
+    const two = (overview: string, prefix: string) => ({
+      overview,
+      themes: [
+        { text: `${prefix} theme A`, kind: 'opinion', feedbackIds: ['F01'] },
+        { text: `${prefix} theme B`, kind: 'suggestion', feedbackIds: ['F03'] },
+      ],
+      conflicts: [{ text: `${prefix} conflict`, feedbackIds: ['F03', 'F04'] }],
+      followUps: [{ text: `${prefix} follow-up`, feedbackIds: ['F05'] }],
+    });
+    const withDraft = async () => {
+      scripted.next = two('old overview', 'old');
+      await generate().expect(201);
+      await attend();
+      scripted.next = two('new overview', 'new');
+      await generate().expect(201);
+    };
+    const merge = (body: object) => http().post('/briefing/draft/merge').send(body);
+
+    it('keeps picked current items first, then picked draft items, and clears the draft', async () => {
+      await withDraft();
+      const res = data(
+        await merge({
+          overview: 'draft',
+          themes: { current: [1], draft: [0] },
+          conflicts: { current: [], draft: [0] },
+          followUps: { current: [0], draft: [] },
+        }).expect(201),
+      );
+      expect(res.draft).toBeNull();
+      expect(res.current?.overview).toBe('new overview');
+      expect(res.current?.themes.map((i) => i.text)).toEqual(['old theme B', 'new theme A']);
+      expect(res.current?.themes.map((i) => i.kind)).toEqual(['suggestion', 'opinion']);
+      expect(res.current?.conflicts.map((i) => i.text)).toEqual(['new conflict']);
+      expect(res.current?.followUps.map((i) => i.text)).toEqual(['old follow-up']);
+      expect(res.current?.editedByHuman).toBe(true);
+    });
+
+    it('stays stale when the old (roster-based) overview is kept, and clears when the new one is taken', async () => {
+      await withDraft();
+      const keptOld = data(await merge({ ...pickNone('current'), overview: 'current' }).expect(201));
+      expect(keptOld.stale).toBe(true);
+      expect(keptOld.current?.attendanceVersion).toBe(0);
+
+      scripted.next = two('newer overview', 'newer');
+      await generate().expect(201);
+      const tookNew = data(await merge({ ...pickNone('current'), overview: 'draft' }).expect(201));
+      expect(tookNew.stale).toBe(false);
+      expect(tookNew.current?.attendanceVersion).toBe(1);
+    });
+
+    it('taking the whole draft is not a human edit (same as replace)', async () => {
+      await withDraft();
+      const res = data(
+        await merge({
+          overview: 'draft',
+          themes: { current: [], draft: [0, 1] },
+          conflicts: { current: [], draft: [0] },
+          followUps: { current: [], draft: [0] },
+        }).expect(201),
+      );
+      expect(res.current).toMatchObject({ overview: 'new overview', editedByHuman: false });
+    });
+
+    it('rejects out-of-range or duplicate indexes with 400 and changes nothing', async () => {
+      await withDraft();
+      const bad = [
+        { ...pickNone('current'), themes: { current: [5], draft: [] } },
+        { ...pickNone('current'), themes: { current: [0, 0], draft: [] } },
+        { ...pickNone('current'), followUps: { current: [], draft: [-1] } },
+      ];
+      for (const body of bad) await merge(body).expect(400);
+      expect(code(await merge(bad[0]).expect(400))).toBe('BRIEFING_MERGE_INVALID_INDEX');
+      const state = data(await http().get('/briefing'));
+      expect(state.current?.overview).toBe('old overview');
+      expect(state.draft?.overview).toBe('new overview');
+    });
+
+    it('rejects a body that sends content instead of picks (400)', async () => {
+      await withDraft();
+      await merge({ ...pickNone('current'), themes: [{ text: 'injected', feedbackIds: [] }] }).expect(400);
+    });
+
+    it('returns 409 BRIEFING_NO_DRAFT without a draft', async () => {
+      await generate().expect(201);
+      expect(code(await merge(pickNone('current')).expect(409))).toBe('BRIEFING_NO_DRAFT');
+    });
+  });
+
   it('SIMULATE_SAVE_FAILURE returns 503 on every write endpoint and writes nothing', async () => {
     await generate().expect(201);
     scripted.next = content('second');
@@ -250,6 +346,7 @@ describe('Briefing (e2e)', () => {
       () => http().post('/briefing/draft/replace'),
       () => http().delete('/briefing/draft'),
       () => http().put('/briefing').send(content('edited')),
+      () => http().post('/briefing/draft/merge').send(pickNone('current')),
     ];
     for (const call of calls) expect(code(await call().expect(503))).toBe('SAVE_FAILED_SIMULATED');
     delete process.env.SIMULATE_SAVE_FAILURE;

@@ -22,6 +22,19 @@ export const updateBriefingSchema = z.strictObject({
 });
 export type UpdateBriefingDto = z.infer<typeof updateBriefingSchema>;
 
+// Merge picks items by index from the stored current and draft; no content is sent, so it cannot be edited this way.
+const pickSchema = z.strictObject({
+  current: z.array(z.number().int().min(0)).describe('Indexes of current items to keep, in order'),
+  draft: z.array(z.number().int().min(0)).describe('Indexes of draft items to take, appended after the kept ones'),
+});
+export const mergeBriefingSchema = z.strictObject({
+  overview: z.enum(['current', 'draft']).describe('Overview is one paragraph: keep one of the two'),
+  themes: pickSchema,
+  conflicts: pickSchema,
+  followUps: pickSchema,
+});
+export type MergeBriefingDto = z.infer<typeof mergeBriefingSchema>;
+
 const itemSchema = z.strictObject({
   text: z.string(),
   feedbackIds: z.array(z.string()),

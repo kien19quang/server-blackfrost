@@ -3,6 +3,8 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   briefingStateSchema,
   type BriefingStateDto,
+  mergeBriefingSchema,
+  type MergeBriefingDto,
   updateBriefingSchema,
   type UpdateBriefingDto,
 } from '../dtos/briefing.dto';
@@ -29,6 +31,12 @@ export class BriefingController {
   @ApiOkResponse({ standardSchema: briefingStateSchema })
   replaceWithDraft(): Promise<BriefingStateDto> {
     return this.briefingService.replaceWithDraft();
+  }
+
+  @Post('draft/merge')
+  @ApiOkResponse({ standardSchema: briefingStateSchema })
+  mergeDraft(@Body({ schema: mergeBriefingSchema }) dto: MergeBriefingDto): Promise<BriefingStateDto> {
+    return this.briefingService.mergeDraft(dto);
   }
 
   @Put()

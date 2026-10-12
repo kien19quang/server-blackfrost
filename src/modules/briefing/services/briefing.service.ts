@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -13,9 +14,24 @@ import { BriefingDocument, BriefingEntity } from '../../../schemas/briefing.sche
 import { EventService } from '../../events/services/event.service';
 import { EVENT_ID } from '../../events/types/event.type';
 import { FeedbackService } from '../../feedback/services/feedback.service';
-import { aiBriefingSchema, BriefingStateDto, UpdateBriefingDto } from '../dtos/briefing.dto';
+import { aiBriefingSchema, BriefingStateDto, MergeBriefingDto, UpdateBriefingDto } from '../dtos/briefing.dto';
 import { AiProvider } from '../providers/ai.provider';
 import type { IBriefingItem, IStoredBriefing } from '../types/briefing.type';
+
+const SECTION_KEYS = ['themes', 'conflicts', 'followUps'] as const;
+
+// Kept current items first, then taken draft items, each in the order given. Rejects duplicate/out-of-range indexes.
+function pickItems<T>(section: string, current: T[], draft: T[], picks: MergeBriefingDto['themes']): T[] {
+  const take = (from: T[], indexes: number[], source: string) => {
+    if (new Set(indexes).size !== indexes.length || indexes.some((i) => i >= from.length)) {
+      throw new BadRequestException(`${section}.${source} has a duplicate or out-of-range index.`, {
+        errorCode: 'BRIEFING_MERGE_INVALID_INDEX',
+      });
+    }
+    return indexes.map((i) => from[i]);
+  };
+  return [...take(current, picks.current, 'current'), ...take(draft, picks.draft, 'draft')];
+}
 
 @Injectable()
 export class BriefingService {
@@ -67,6 +83,37 @@ export class BriefingService {
     const doc = await this.findOrCreate();
     if (!doc.draft) throw this.noDraft();
     doc.current = { ...doc.draft, editedByHuman: false, updatedAt: new Date() };
+    doc.draft = null;
+    await doc.save();
+    return this.toState(doc);
+  }
+
+  // Coordinator picks items from both versions; the server assembles them from what is stored, then clears the draft.
+  // Attendance metadata follows the chosen overview (the roster-grounded part), so keeping an old overview stays stale.
+  // Anything other than taking the whole draft is a human decision, so it counts as a human edit.
+  async mergeDraft(dto: MergeBriefingDto): Promise<BriefingStateDto> {
+    this.assertSaveAllowed();
+    const doc = await this.findOrCreate();
+    if (!doc.draft || !doc.current) throw this.noDraft();
+
+    const { current, draft } = doc;
+    const base = dto.overview === 'draft' ? draft : current;
+    const wholeDraft =
+      dto.overview === 'draft' &&
+      SECTION_KEYS.every((key) => dto[key].current.length === 0 && dto[key].draft.length === draft[key].length);
+
+    doc.current = {
+      overview: base.overview,
+      themes: pickItems('themes', current.themes, draft.themes, dto.themes),
+      conflicts: pickItems('conflicts', current.conflicts, draft.conflicts, dto.conflicts),
+      followUps: pickItems('followUps', current.followUps, draft.followUps, dto.followUps),
+      attendanceSnapshot: base.attendanceSnapshot,
+      attendanceVersion: base.attendanceVersion,
+      model: base.model,
+      generatedAt: base.generatedAt,
+      editedByHuman: !wholeDraft,
+      updatedAt: new Date(),
+    };
     doc.draft = null;
     await doc.save();
     return this.toState(doc);
