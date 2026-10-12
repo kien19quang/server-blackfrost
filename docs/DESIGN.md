@@ -78,3 +78,14 @@ Copied from the Education project (`server-education`, `web-education`), then tr
 - Single coordinator: no auth and no concurrency control. Two tabs saving at once means the last write wins.
 - A database seeded before the `status: 'completed'` fix still shows `ended` until `yarn reset`.
 - The real model is only exercised manually (`yarn check:ai`, demo run). Automated tests use the mock, fail and scripted providers.
+
+## Partial merge of a regenerated draft (added 12/10 after review)
+
+Replace-all loses a coordinator's careful edit in one section just to get a fresher one elsewhere, so the draft view also lets the coordinator cherry-pick: tick items to keep from Current and to take from Draft, choose one of the two overviews, then apply.
+
+- **No automatic matching.** The model has no memory between generations and returns free text without stable item IDs; matching old and new items by cited notes or by feeding old IDs back would be a guess that can silently mismatch a human edit. The human does the matching; the UI only *hints* when picked items on both sides cite the same verified note.
+- **Server assembles, client sends indexes only** (`POST /briefing/draft/merge`). The merge cannot smuggle new content, IDs are still validated on read, and the draft is cleared in the same save.
+- **Staleness follows the overview**, the roster-grounded part: keeping the old overview after attendance changed stays stale; taking the draft overview clears it. `model`/`generatedAt` follow the overview source too.
+- **Anything other than taking the whole draft counts as a human edit** (`editedByHuman: true`), so the next regeneration warns before Replace all.
+- Order is simple (kept current items, then taken draft items); reordering is done in the Edit modal.
+
