@@ -14,16 +14,20 @@ yarn test:e2e          # e2e (in-memory MongoDB)
 
 - On startup the app seeds event `E101` (4 members) and feedback `F01`–`F08` **only if missing** (`$setOnInsert`), so restarts never overwrite saved attendance.
 - `yarn reset` wipes event + feedback data and re-seeds (needs `MONGODB_URI`). Run it explicitly; it is never triggered automatically.
-- `SIMULATE_SAVE_FAILURE=true` makes write endpoints return `503` with `code: EVENT_SAVE_FAILED`.
+- `SIMULATE_SAVE_FAILURE=true` makes every write endpoint return `503` with `code: SAVE_FAILED_SIMULATED`, before anything is written or the model is called.
 
-API (envelope `{ data }`, schemas in Swagger `/api-docs`):
+API (envelope `{ data }`, errors `{ statusCode, code, message }`, schemas in Swagger `/api-docs`):
 
-- `GET /events/E101` → event, members, `counts` (computed in code; `notRecorded` ≠ `absent`), `attendanceVersion`.
-- `PUT /events/E101/attendance` body `{ members: [{ memberId, attendance }] }` (`attended | absent | not_recorded`); 400 on unknown member/invalid value/duplicates; bumps `attendanceVersion`; returns the updated event.
-- `GET /feedback` → `[{ feedbackId, text }]`, read-only.
+- `GET /events/E101` → `id`, `title`, `venue`, `status`, `members [{ id, name, attendance }]`, `counts` (computed in code; `notRecorded` ≠ `absent`), `attendanceVersion`. Other IDs → 404 `EVENT_NOT_FOUND`.
+- `PUT /events/E101/attendance` body `{ updates: [{ memberId, status }] }` (`attended | absent | not_recorded`). 400 on invalid body, 400 `ATTENDANCE_MEMBER_NOT_FOUND` on an unknown member (nothing written). `attendanceVersion` +1 only if a status actually changed. Returns the updated event.
+- `GET /feedback` → `[{ id, text }]`, read-only.
 
 ## AI briefing
 
-- `AI_PROVIDER`: `openai` (real model, `AI_MODEL`, key in `AI_API_KEY` or `OPENAI_API_KEY`), `mock` (no network) or `fail` (every generate returns 502 `BRIEFING_GENERATION_FAILED`).
+- `AI_PROVIDER`: `openai` (real model, `AI_MODEL`, key in `AI_API_KEY` or `OPENAI_API_KEY`), `mock` (deterministic, no network) or `fail` (every generate returns 502 `BRIEFING_GENERATION_FAILED`).
+- `GET /briefing` → `{ current, draft, stale, attendanceVersion }`; each item has `text`, `feedbackIds`, `unverifiedFeedbackIds` (computed on read).
+- `POST /briefing/generate`: first time → `current`; afterwards → `draft` only. `POST /briefing/draft/replace` / `DELETE /briefing/draft` apply or discard the draft (409 `BRIEFING_NO_DRAFT` without one). `PUT /briefing` saves the coordinator edit (404 `BRIEFING_NOT_FOUND` before the first generate).
 - `yarn check:ai` makes one real model call on the seed data and prints the validated briefing plus any invented feedback IDs.
 - `yarn reset` also clears briefings.
+
+Design and trade-offs: [docs/DESIGN.md](docs/DESIGN.md). Demo checks and results: [docs/CHECKS.md](docs/CHECKS.md).

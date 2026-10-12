@@ -34,6 +34,7 @@ describe('Events + Feedback (e2e)', () => {
     const res = await http().get('/events/E101').expect(200);
     expect(b(res).data).toMatchObject({
       id: 'E101',
+      status: 'completed',
       attendanceVersion: 0,
       counts: { registered: 4, attended: 1, absent: 2, notRecorded: 1 },
     });

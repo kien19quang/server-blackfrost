@@ -157,6 +157,17 @@ describe('Briefing (e2e)', () => {
     expect(data(await http().get('/briefing')).draft?.overview).toBe('d1');
   });
 
+  it.each([
+    ['a reply missing conflicts', { overview: 'x', themes: [], followUps: [] }],
+    ['a theme without a kind', { ...content('x'), themes: [{ text: 'T', feedbackIds: ['F01'] }] }],
+    ['a non-object reply', 'not json'],
+  ])('generate returns 502 on %s and writes nothing', async (_, reply) => {
+    scripted.next = reply;
+    const res = await generate().expect(502);
+    expect(code(res)).toBe('BRIEFING_GENERATION_FAILED');
+    expect(data(await http().get('/briefing')).current).toBeNull();
+  });
+
   it('draft/replace makes the draft current (not human-edited) and clears it', async () => {
     await generate().expect(201);
     await http().put('/briefing').send(content('edited')).expect(200);

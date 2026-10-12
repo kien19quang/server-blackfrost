@@ -13,7 +13,7 @@ const messagesOf = (value: unknown, metadata: ArgumentMetadata): Promise<string[
   );
 
 describe('validationPipe + shared schemas', () => {
-  it('áp giá trị mặc định và ép kiểu số cho paginationQuerySchema', async () => {
+  it('applies defaults and coerces numbers for paginationQuerySchema', async () => {
     await expect(validationPipe.transform({}, query(paginationQuerySchema))).resolves.toEqual({ page: 1, limit: 20 });
     await expect(validationPipe.transform({ page: '3', limit: '50' }, query(paginationQuerySchema))).resolves.toEqual({
       page: 3,
@@ -21,7 +21,7 @@ describe('validationPipe + shared schemas', () => {
     });
   });
 
-  it('ném 400 với message tiếng Việt có path khi sai giá trị', async () => {
+  it('throws 400 with an English message prefixed by the path', async () => {
     const error: unknown = await validationPipe
       .transform({ limit: '1000' }, query(paginationQuerySchema))
       .catch((e: unknown) => e);
@@ -29,21 +29,21 @@ describe('validationPipe + shared schemas', () => {
     const [message] = await messagesOf({ limit: '1000' }, query(paginationQuerySchema));
     expect(message).toMatch(/^limit: /);
     expect(message).toContain('100');
-    expect(message).not.toMatch(/too big|expected/i);
+    expect(message).toMatch(/too big/i);
   });
 
-  it('ném 400 khi có field lạ (strictObject)', async () => {
+  it('throws 400 on unknown fields (strictObject)', async () => {
     const messages = await messagesOf({ page: '1', schoolId: 'x' }, query(paginationQuerySchema));
     expect(messages.join()).toContain('schoolId');
   });
 
-  it('objectIdSchema chỉ nhận chuỗi 24 ký tự hex', async () => {
+  it('objectIdSchema only accepts 24 hex characters', async () => {
     const param: ArgumentMetadata = { type: 'param', data: 'id', schema: objectIdSchema };
     await expect(validationPipe.transform('652f1c2b9d3e4a0012345678', param)).resolves.toBe('652f1c2b9d3e4a0012345678');
-    await expect(messagesOf('abc', param)).resolves.toEqual(['ID không hợp lệ']);
+    await expect(messagesOf('abc', param)).resolves.toEqual(['Invalid ID']);
   });
 
-  it('bỏ qua param không gắn schema', async () => {
+  it('skips params without a schema', async () => {
     await expect(validationPipe.transform({ any: 1 }, { type: 'body' })).resolves.toEqual({ any: 1 });
   });
 });
