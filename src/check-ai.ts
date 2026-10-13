@@ -6,7 +6,7 @@ import { SEED_EVENT, SEED_FEEDBACK } from './modules/events/services/seed.servic
 // `yarn check:ai`: one real model call on the seed data (needs AI_MODEL + a key in .env, no DB).
 // Prints the schema-validated briefing and any feedback IDs the model invented.
 async function main() {
-  const model = process.env.AI_MODEL || 'gpt-4o-mini';
+  const model = process.env.AI_MODEL || 'gpt-5.4-mini';
   const provider = new OpenAiProvider(process.env.AI_API_KEY || undefined, model);
   const raw = await provider.generate({
     eventName: SEED_EVENT.name,

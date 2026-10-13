@@ -30,7 +30,7 @@ import { BriefingService } from './services/briefing.service';
         // Key stays in the server env (undefined: the SDK falls back to OPENAI_API_KEY); a missing key only fails generation.
         return new OpenAiProvider(
           config.get<string>('AI_API_KEY') || undefined,
-          config.get<string>('AI_MODEL') || 'gpt-4o-mini',
+          config.get<string>('AI_MODEL') || 'gpt-5.4-mini',
         );
       },
     },
