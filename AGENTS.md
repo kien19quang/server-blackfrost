@@ -2,6 +2,8 @@
 
 API NestJS v12 (CommonJS) + MongoDB (Mongoose 8) cho **BlackFrost Event Desk** (take-home): một sự kiện seed sẵn `E101`, điểm danh, feedback chỉ đọc `F01`–`F08`, bản briefing do model AI thật sinh từ backend, trích dẫn feedback ID được validate, người dùng sửa được, đánh dấu stale khi điểm danh đổi, tạo lại không bao giờ âm thầm ghi đè chỉnh sửa của người. Một coordinator, **không có auth, không multi-tenant**.
 
+Endpoint: `GET /events/E101`, `PUT /events/E101/attendance`, `GET /feedback`, `GET|PUT /briefing`, `POST /briefing/generate`, `POST /briefing/draft/replace`, `POST /briefing/draft/merge`, `DELETE /briefing/draft`. Chi tiết và lý do thiết kế: `README.md`, `docs/DESIGN.md`; kết quả kiểm tra: `docs/CHECKS.md`.
+
 Chạy app: Node ≥ 22.12. **Chạy test/lint/dev: Node ≥ 24.9** (Jest chỉ load được package ESM của Nest v12 trên Node ≥ 24.9).
 
 ## Quy định bắt buộc
@@ -17,6 +19,12 @@ Chạy app: Node ≥ 22.12. **Chạy test/lint/dev: Node ≥ 24.9** (Jest chỉ 
 - Task chạm nhiều repo → commit riêng cho từng repo, ghi liên kết chéo.
 - Chạy lệnh (install, lint, test, git) bên trong repo này.
 
+## Tham chiếu và nguyên tắc
+
+- Hạ tầng (lint, Jest, envelope, exception filter, Zod pipe) chép từ `~/WorkScope/Education/server-education`. Project tham chiếu **chỉ đọc, không sửa**: `server-education` và `~/WorkScope/Bot Genius/server-bot-genius`. Pattern chưa có ở đây thì xem hai repo đó làm rồi làm theo (lưu ý NestJS v12 khác v11 của bot-genius).
+- **Backend sở hữu nghiệp vụ:** số đếm điểm danh tính từ bản ghi đã lưu, stale, validate feedback ID (`unverifiedFeedbackIds`), ghép merge đều ở server; web chỉ hiển thị. Model AI không được đổi số liệu điểm danh.
+- Đổi API contract (DTO, endpoint) thì báo người dùng trước và cập nhật `README.md` + `docs/DESIGN.md`.
+
 ## Lệnh
 
 | Lệnh | Việc |
@@ -29,6 +37,8 @@ Chạy app: Node ≥ 22.12. **Chạy test/lint/dev: Node ≥ 24.9** (Jest chỉ 
 | `yarn test` | Unit test Jest (`src/**/*.spec.ts`) |
 | `yarn test:e2e` | E2E Jest + supertest + `mongodb-memory-server` (`test/*.e2e-spec.ts`) |
 | `yarn build` | `nest build` → `dist/` |
+| `yarn reset` | Xoá và seed lại `E101` + `F01`–`F08`, xoá briefing |
+| `yarn check:ai` | Gọi model thật một lần trên dữ liệu seed (cần key trong `.env`, không cần DB) |
 | `yarn ci` | lint → typecheck → test → test:e2e → build (giống `.github/workflows/ci.yml`) |
 
 Lần đầu chạy e2e, `mongodb-memory-server` tải binary MongoDB (~77MB) vào `~/.cache/mongodb-binaries`.
@@ -45,7 +55,10 @@ Xem `.env.example`; copy thành `.env` (không commit).
 | `PORT` | không (mặc định `3301`) | Cổng HTTP |
 | `MONGODB_URI` | có | Chuỗi kết nối MongoDB, gồm tên DB. Không cần replica set |
 | `CORS_ORIGIN` | không | Origin web được gọi API, ngăn cách bằng dấu phẩy (`http://localhost:3300`) |
-| `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` | chưa dùng | Dành cho briefing AI. **API key chỉ nằm ở `.env` của server**; provider mock chỉ dùng cho dev/test lỗi |
+| `AI_PROVIDER` | không (mặc định `openai`) | `openai` (model thật) · `mock` (dev/test) · `fail` (tái hiện lỗi generate) |
+| `AI_API_KEY` | có khi `openai` | Key OpenAI; để trống thì SDK đọc `OPENAI_API_KEY`. **Key chỉ nằm ở `.env` của server** |
+| `AI_MODEL` | không (mặc định `gpt-5.4-mini`) | Model dùng cho briefing |
+| `SIMULATE_SAVE_FAILURE` | không | `true`: mọi thao tác lưu trả 503 (tái hiện lỗi lưu) |
 
 ## MongoDB local
 
