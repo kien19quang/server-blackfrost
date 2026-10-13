@@ -145,6 +145,35 @@ describe('Briefing (e2e)', () => {
     expect(data(await http().get('/briefing'))).toMatchObject({ stale: false, attendanceVersion: 0 });
   });
 
+  it('is not stale once attendance is changed back to what the briefing was generated from', async () => {
+    const setM03 = (status: string) =>
+      http()
+        .put('/events/E101/attendance')
+        .send({ updates: [{ memberId: 'M03', status }] })
+        .expect(200);
+    await generate().expect(201);
+    await setM03('attended');
+    expect(data(await http().get('/briefing')).stale).toBe(true);
+    await setM03('not_recorded');
+    expect(data(await http().get('/briefing'))).toMatchObject({ stale: false, attendanceVersion: 2 });
+  });
+
+  it('is stale when two members swap statuses, even though the counts are unchanged', async () => {
+    await generate().expect(201);
+    await http()
+      .put('/events/E101/attendance')
+      .send({
+        updates: [
+          { memberId: 'M01', status: 'absent' },
+          { memberId: 'M02', status: 'attended' },
+        ],
+      })
+      .expect(200);
+    const state = data(await http().get('/briefing'));
+    expect(state.stale).toBe(true);
+    expect(state.current?.attendanceSnapshot).toEqual({ registered: 4, attended: 1, absent: 2, notRecorded: 1 });
+  });
+
   it('generating again overwrites the draft, never current', async () => {
     await generate().expect(201);
     scripted.next = content('d1');

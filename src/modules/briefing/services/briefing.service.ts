@@ -9,9 +9,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
+import { omit } from 'lodash';
 import { Model } from 'mongoose';
 import { BriefingDocument, BriefingEntity } from '../../../schemas/briefing.schema';
 import { EventService } from '../../events/services/event.service';
+import { EventResponseDto } from '../../events/dtos/event.dto';
 import { EVENT_ID } from '../../events/types/event.type';
 import { FeedbackService } from '../../feedback/services/feedback.service';
 import { aiBriefingSchema, BriefingStateDto, MergeBriefingDto, UpdateBriefingDto } from '../dtos/briefing.dto';
@@ -31,6 +33,13 @@ function pickItems<T>(section: string, current: T[], draft: T[], picks: MergeBri
     return indexes.map((i) => from[i]);
   };
   return [...take(current, picks.current, 'current'), ...take(draft, picks.draft, 'draft')];
+}
+
+// Stale = the roster no longer matches the one the briefing was generated from. Changing a status and changing it
+// back is therefore not stale, while swapping two members (same counts) is.
+function isStale(briefing: IStoredBriefing, event: EventResponseDto): boolean {
+  if (!briefing.rosterSnapshot) return briefing.attendanceVersion !== event.attendanceVersion;
+  return event.members.some((m) => briefing.rosterSnapshot![m.id] !== m.attendance);
 }
 
 @Injectable()
@@ -65,6 +74,7 @@ export class BriefingService {
     const generated: IStoredBriefing = {
       ...content,
       attendanceSnapshot: event.counts,
+      rosterSnapshot: Object.fromEntries(event.members.map((m) => [m.id, m.attendance])),
       model: this.provider.model,
       generatedAt: now,
       attendanceVersion: event.attendanceVersion,
@@ -108,6 +118,7 @@ export class BriefingService {
       conflicts: pickItems('conflicts', current.conflicts, draft.conflicts, dto.conflicts),
       followUps: pickItems('followUps', current.followUps, draft.followUps, dto.followUps),
       attendanceSnapshot: base.attendanceSnapshot,
+      rosterSnapshot: base.rosterSnapshot,
       attendanceVersion: base.attendanceVersion,
       model: base.model,
       generatedAt: base.generatedAt,
@@ -185,7 +196,7 @@ export class BriefingService {
     });
     const view = (b: IStoredBriefing | null) =>
       b && {
-        ...b,
+        ...omit(b, 'rosterSnapshot'),
         themes: b.themes.map(item),
         conflicts: b.conflicts.map(item),
         followUps: b.followUps.map(item),
@@ -195,7 +206,7 @@ export class BriefingService {
     return {
       current: view(doc.current),
       draft: view(doc.draft),
-      stale: doc.current !== null && doc.current.attendanceVersion !== event.attendanceVersion,
+      stale: doc.current !== null && isStale(doc.current, event),
       attendanceVersion: event.attendanceVersion,
     };
   }

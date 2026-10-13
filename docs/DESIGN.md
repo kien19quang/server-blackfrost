@@ -21,9 +21,9 @@ Each step was a `feat/…`/`fix/…` branch, reviewed and merged into local `mai
 | --- | --- | --- |
 | `events` | `{ eventId, name, venue, status, attendanceVersion, members: [{ memberId, name, attendance }] }` | Members are embedded: 4 fixed rows, always read and written with the event. Counts are **not stored**; they are computed from `members` on every read, so they cannot drift. |
 | `feedbacknotes` | `{ feedbackId, text }` | Read-only. Not linked to members, by design (anonymous). |
-| `briefings` | `{ eventId, current, draft }` | One document per event. `current` and `draft` have the same shape: `overview`, `themes [{ text, kind, feedbackIds }]`, `conflicts`, `followUps`, `attendanceSnapshot`, `model`, `generatedAt`, `attendanceVersion`, `editedByHuman`, `updatedAt`. |
+| `briefings` | `{ eventId, current, draft }` | One document per event. `current` and `draft` have the same shape: `overview`, `themes [{ text, kind, feedbackIds }]`, `conflicts`, `followUps`, `attendanceSnapshot`, `rosterSnapshot` (internal, not returned), `model`, `generatedAt`, `attendanceVersion`, `editedByHuman`, `updatedAt`. |
 
-- **Stale = version, not hash.** `attendanceVersion` goes up by 1 only when a save actually changes a status. A briefing is stale when its `attendanceVersion` differs from the event's. Trade-off: changing a member and then changing them back still counts as stale. A hash of the roster would avoid that, but we chose the simpler and more explicit version.
+- **Stale = roster snapshot, not version.** On generate the briefing stores each member's status (`rosterSnapshot`). It is stale when any member's current status differs from that snapshot. So changing a member and then changing them back is not stale, while swapping two members is stale even though the counts are the same (the overview may name them). Comparing counts alone would miss that swap; comparing `attendanceVersion` would flag the change-back. `attendanceVersion` (+1 per save that changes a status) is kept as metadata and as the fallback for briefings saved before `rosterSnapshot` existed.
 - **`unverifiedFeedbackIds` is computed on read**, never stored, by comparing cited IDs with the stored feedback. A coordinator edit or a model reply that cites `F99` is kept as written but flagged. The UI shows it as a red "unverified" tag that does not open as evidence.
 - Seed uses `$setOnInsert`, so restarts never overwrite saved attendance. `yarn reset` is the only way back to seed and is never run automatically.
 - **Internal vs API names**: the DB stores `eventId/name/memberId/feedbackId`, while the API exposes the contract names `id/title/id/id`. The mapping lives in one `toDto` per service.
@@ -72,7 +72,6 @@ Copied from the Education project (`server-education`, `web-education`), then tr
 ## Known limitations
 
 - **Citation check only proves that an ID exists**, not that the note supports the statement. An existing but irrelevant ID is shown as verified.
-- Stale is version-based: changing a status and then changing it back still shows stale.
 - Model output is non-deterministic. In QA one draft listed F05/F06 (both want a longer rest) as a conflict. Mitigation: the coordinator can edit, and any regenerate goes to a draft that is compared and replaced or discarded explicitly.
 - Replacing the draft overwrites the coordinator's edits to `current`. The UI warns before Replace, but there is no edit history or undo.
 - Single coordinator: no auth and no concurrency control. Two tabs saving at once means the last write wins.
