@@ -38,8 +38,7 @@ function pickItems<T>(section: string, current: T[], draft: T[], picks: MergeBri
 // Stale = the roster no longer matches the one the briefing was generated from. Changing a status and changing it
 // back is therefore not stale, while swapping two members (same counts) is.
 function isStale(briefing: IStoredBriefing, event: EventResponseDto): boolean {
-  if (!briefing.rosterSnapshot) return briefing.attendanceVersion !== event.attendanceVersion;
-  return event.members.some((m) => briefing.rosterSnapshot![m.id] !== m.attendance);
+  return event.members.some((m) => briefing.rosterSnapshot[m.id] !== m.attendance);
 }
 
 @Injectable()
