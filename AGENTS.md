@@ -19,9 +19,8 @@ Chạy app: Node ≥ 22.12. **Chạy test/lint/dev: Node ≥ 24.9** (Jest chỉ 
 - Task chạm nhiều repo → commit riêng cho từng repo, ghi liên kết chéo.
 - Chạy lệnh (install, lint, test, git) bên trong repo này.
 
-## Tham chiếu và nguyên tắc
+## Nguyên tắc
 
-- Hạ tầng (lint, Jest, envelope, exception filter, Zod pipe) chép từ `~/WorkScope/Education/server-education`. Project tham chiếu **chỉ đọc, không sửa**: `server-education` và `~/WorkScope/Bot Genius/server-bot-genius`. Pattern chưa có ở đây thì xem hai repo đó làm rồi làm theo (lưu ý NestJS v12 khác v11 của bot-genius).
 - **Backend sở hữu nghiệp vụ:** số đếm điểm danh tính từ bản ghi đã lưu, stale, validate feedback ID (`unverifiedFeedbackIds`), ghép merge đều ở server; web chỉ hiển thị. Model AI không được đổi số liệu điểm danh.
 - Đổi API contract (DTO, endpoint) thì báo người dùng trước và cập nhật `README.md` + `docs/DESIGN.md`.
 
