@@ -2,6 +2,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import request from 'supertest';
 import { EventEntity } from '../src/schemas/event.schema';
+import { FeedbackNote } from '../src/schemas/feedback.schema';
 import { SeedService } from '../src/modules/events/services/seed.service';
 import { createTestApp, type ITestApp } from './utils/test-app';
 
@@ -110,6 +111,14 @@ describe('Events + Feedback (e2e)', () => {
       })
       .expect(200);
     expect(b(res).data.attendanceVersion).toBe(1);
+  });
+
+  it('GET /feedback lists only the notes of E101', async () => {
+    const feedbackModel = t.app.get<Model<FeedbackNote>>(getModelToken(FeedbackNote.name));
+    await feedbackModel.create({ eventId: 'E102', feedbackId: 'F01', text: 'Note from another event' });
+    const res = await http().get('/feedback').expect(200);
+    expect(b(res).data).toHaveLength(8);
+    expect(b(res).data.map((f: { text: string }) => f.text)).not.toContain('Note from another event');
   });
 
   it('GET /feedback returns F01–F08 in order', async () => {

@@ -13,7 +13,7 @@ async function main() {
     venue: SEED_EVENT.venue,
     members: SEED_EVENT.members,
     counts: countAttendance(SEED_EVENT.members),
-    feedback: SEED_FEEDBACK,
+    feedback: SEED_FEEDBACK.map(({ feedbackId, text }) => ({ feedbackId, text })),
   });
   const briefing = aiBriefingSchema.parse(raw);
   const known = new Set(SEED_FEEDBACK.map((f) => f.feedbackId));

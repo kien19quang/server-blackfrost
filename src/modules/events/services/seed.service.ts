@@ -28,7 +28,7 @@ export const SEED_FEEDBACK = [
   'The rest stop felt rushed; a few more minutes would be good.',
   'Could we try a shorter route? The final stretch felt long.',
   'No extra suggestions from me.',
-].map((text, i) => ({ feedbackId: `F0${i + 1}`, text }));
+].map((text, i) => ({ eventId: EVENT_ID, feedbackId: `F0${i + 1}`, text }));
 
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -47,7 +47,7 @@ export class SeedService implements OnApplicationBootstrap {
     await this.feedbackModel.bulkWrite(
       SEED_FEEDBACK.map((f) => ({
         updateOne: {
-          filter: { feedbackId: f.feedbackId },
+          filter: { eventId: f.eventId, feedbackId: f.feedbackId },
           update: { $setOnInsert: f },
           upsert: true,
         },
