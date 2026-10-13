@@ -8,8 +8,8 @@ import { FeedbackListDto } from '../dtos/feedback.dto';
 export class FeedbackService {
   constructor(@InjectModel(FeedbackNote.name) private readonly feedbackModel: Model<FeedbackNote>) {}
 
-  async list(): Promise<FeedbackListDto> {
-    const notes = await this.feedbackModel.find().sort({ feedbackId: 1 }).lean();
+  async list(eventId: string): Promise<FeedbackListDto> {
+    const notes = await this.feedbackModel.find({ eventId }).sort({ feedbackId: 1 }).lean();
     return notes.map((n) => ({ id: n.feedbackId, text: n.text }));
   }
 }

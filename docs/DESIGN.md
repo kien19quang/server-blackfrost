@@ -20,7 +20,7 @@ Each step was a `feat/…`/`fix/…` branch, reviewed and merged into local `mai
 | Collection | Document | Notes |
 | --- | --- | --- |
 | `events` | `{ eventId, name, venue, status, attendanceVersion, members: [{ memberId, name, attendance }] }` | Members are embedded: 4 fixed rows, always read and written with the event. Counts are **not stored**; they are computed from `members` on every read, so they cannot drift. |
-| `feedbacknotes` | `{ feedbackId, text }` | Read-only. Not linked to members, by design (anonymous). |
+| `feedbacknotes` | `{ eventId, feedbackId, text }` | Read-only. Belongs to one event (unique `eventId + feedbackId`, so another event can reuse `F01`), but not linked to members, by design (anonymous). The API and the briefing only read the notes of `E101`. |
 | `briefings` | `{ eventId, current, draft }` | One document per event. `current` and `draft` have the same shape: `overview`, `themes [{ text, kind, feedbackIds }]`, `conflicts`, `followUps`, `attendanceSnapshot`, `rosterSnapshot` (internal, not returned), `model`, `generatedAt`, `attendanceVersion`, `editedByHuman`, `updatedAt`. |
 
 - **Stale = roster snapshot, not version.** On generate the briefing stores each member's status (`rosterSnapshot`). It is stale when any member's current status differs from that snapshot. So changing a member and then changing them back is not stale, while swapping two members is stale even though the counts are the same (the overview may name them). Comparing counts alone would miss that swap; comparing `attendanceVersion` would flag the change-back. `attendanceVersion` (+1 per save that changes a status) is kept as metadata.

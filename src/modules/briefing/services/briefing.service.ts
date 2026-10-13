@@ -61,7 +61,7 @@ export class BriefingService {
   async generate(): Promise<BriefingStateDto> {
     this.assertSaveAllowed();
     const event = await this.eventService.get(EVENT_ID);
-    const feedback = await this.feedbackService.list();
+    const feedback = await this.feedbackService.list(EVENT_ID);
     const content = await this.callProvider({
       eventName: event.title,
       venue: event.venue,
@@ -187,7 +187,7 @@ export class BriefingService {
   }
 
   private async toState(doc: BriefingDocument): Promise<BriefingStateDto> {
-    const [event, feedback] = await Promise.all([this.eventService.get(EVENT_ID), this.feedbackService.list()]);
+    const [event, feedback] = await Promise.all([this.eventService.get(EVENT_ID), this.feedbackService.list(EVENT_ID)]);
     const known = new Set(feedback.map((f) => f.id));
     const item = <T extends IBriefingItem>(i: T) => ({
       ...i,
