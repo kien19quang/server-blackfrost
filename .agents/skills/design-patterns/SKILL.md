@@ -27,7 +27,7 @@ src/
     types/<feature>.type.ts
 ```
 
-Không có `models/`, `entities/`, `interfaces/`, `enums/`: schema ở `schemas/`, interface + enum gộp trong `types/`. Module mẫu: `modules/health`.
+Không có `models/`, `entities/`, `interfaces/`, `enums/`: schema ở `schemas/`, interface + enum gộp trong `types/`. Module mẫu: `modules/events`.
 
 ## Thứ tự method trong controller
 

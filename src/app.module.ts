@@ -8,7 +8,6 @@ import { validationPipe } from './core/shared/validation.pipe';
 import { BriefingModule } from './modules/briefing/briefing.module';
 import { EventModule } from './modules/events/event.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
-import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -17,7 +16,6 @@ import { HealthModule } from './modules/health/health.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({ uri: config.getOrThrow<string>('MONGODB_URI') }),
     }),
-    HealthModule,
     EventModule,
     FeedbackModule,
     BriefingModule,

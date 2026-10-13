@@ -1,6 +1,6 @@
 # server-blackfrost
 
-API NestJS v12 (CommonJS) + MongoDB (Mongoose 8) cho **BlackFrost Event Desk** (take-home): một sự kiện seed sẵn `E101`, điểm danh, feedback chỉ đọc `F01`–`F08`, bản briefing do model AI thật sinh từ backend, trích dẫn feedback ID được validate, người dùng sửa được, đánh dấu stale khi điểm danh đổi, tạo lại không bao giờ âm thầm ghi đè chỉnh sửa của người. Một coordinator, **không có auth, không multi-tenant**. Hiện mới là skeleton: chỉ có `GET /health`.
+API NestJS v12 (CommonJS) + MongoDB (Mongoose 8) cho **BlackFrost Event Desk** (take-home): một sự kiện seed sẵn `E101`, điểm danh, feedback chỉ đọc `F01`–`F08`, bản briefing do model AI thật sinh từ backend, trích dẫn feedback ID được validate, người dùng sửa được, đánh dấu stale khi điểm danh đổi, tạo lại không bao giờ âm thầm ghi đè chỉnh sửa của người. Một coordinator, **không có auth, không multi-tenant**.
 
 Chạy app: Node ≥ 22.12. **Chạy test/lint/dev: Node ≥ 24.9** (Jest chỉ load được package ESM của Nest v12 trên Node ≥ 24.9).
 
@@ -34,7 +34,6 @@ Chạy app: Node ≥ 22.12. **Chạy test/lint/dev: Node ≥ 24.9** (Jest chỉ 
 Lần đầu chạy e2e, `mongodb-memory-server` tải binary MongoDB (~77MB) vào `~/.cache/mongodb-binaries`.
 
 - Swagger UI: `/api-docs`; JSON: `/api-docs-json`.
-- `GET /health`: `{ data: { status: 'ok', database: 'up' | 'down' } }`.
 - Docker: `docker build -t server-blackfrost .` (image Node 22, cổng 3301).
 
 ## Env
