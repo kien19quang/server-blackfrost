@@ -57,6 +57,7 @@ Xem `.env.example`; copy thành `.env` (không commit).
 | `AI_PROVIDER` | không (mặc định `openai`) | `openai` (model thật) · `mock` (dev/test) · `fail` (tái hiện lỗi generate) |
 | `AI_API_KEY` | có khi `openai` | Key OpenAI; để trống thì SDK đọc `OPENAI_API_KEY`. **Key chỉ nằm ở `.env` của server** |
 | `AI_MODEL` | không (mặc định `gpt-5.4-mini`) | Model dùng cho briefing |
+| `AI_BASE_URL` | không | API tương thích OpenAI khác (OpenRouter, Gemini, Ollama…); trống = OpenAI. Đổi nhà cung cấp chỉ cần đổi URL + key + model, không viết provider mới |
 | `SIMULATE_SAVE_FAILURE` | không | `true`: mọi thao tác lưu trả 503 (tái hiện lỗi lưu) |
 
 ## MongoDB local

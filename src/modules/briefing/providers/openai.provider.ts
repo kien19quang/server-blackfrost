@@ -11,9 +11,11 @@ export class OpenAiProvider extends AiProvider {
   constructor(
     apiKey: string | undefined,
     readonly model: string,
+    // Any OpenAI-compatible API (OpenRouter, Gemini, Ollama…); undefined = api.openai.com.
+    baseURL?: string,
   ) {
     super();
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, baseURL });
   }
 
   async generate(input: IBriefingPromptInput): Promise<unknown> {

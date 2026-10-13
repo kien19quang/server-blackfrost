@@ -31,6 +31,7 @@ import { BriefingService } from './services/briefing.service';
         return new OpenAiProvider(
           config.get<string>('AI_API_KEY') || undefined,
           config.get<string>('AI_MODEL') || 'gpt-5.4-mini',
+          config.get<string>('AI_BASE_URL') || undefined,
         );
       },
     },
