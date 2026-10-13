@@ -10,7 +10,6 @@ export const SEED_EVENT = {
   name: 'Saturday Walk',
   venue: 'Harbour Community Club',
   status: 'completed',
-  attendanceVersion: 0,
   members: [
     { memberId: 'M01', name: 'Alex', attendance: A.Attended },
     { memberId: 'M02', name: 'Bea', attendance: A.Absent },

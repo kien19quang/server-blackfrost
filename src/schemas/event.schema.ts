@@ -29,10 +29,6 @@ export class EventEntity {
   @Prop({ required: true })
   status: string;
 
-  // Bumped on every attendance save that changes a status. Staleness compares the roster, not this.
-  @Prop({ required: true, default: 0 })
-  attendanceVersion: number;
-
   @Prop({ type: [eventMemberSchema], default: [] })
   members: EventMember[];
 }

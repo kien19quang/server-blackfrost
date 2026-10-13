@@ -8,7 +8,6 @@ import { createTestApp, type ITestApp } from './utils/test-app';
 
 interface IBody {
   data: {
-    attendanceVersion: number;
     counts: { registered: number; attended: number; absent: number; notRecorded: number };
     members: { id: string }[];
   } & { id: string; text: string }[];
@@ -31,12 +30,11 @@ describe('Events + Feedback (e2e)', () => {
     await seed.reset();
   });
 
-  it('GET /events/E101 returns seed data with counts and version', async () => {
+  it('GET /events/E101 returns seed data with counts', async () => {
     const res = await http().get('/events/E101').expect(200);
     expect(b(res).data).toMatchObject({
       id: 'E101',
       status: 'completed',
-      attendanceVersion: 0,
       counts: { registered: 4, attended: 1, absent: 2, notRecorded: 1 },
     });
     expect(b(res).data.members).toHaveLength(4);
@@ -47,12 +45,11 @@ describe('Events + Feedback (e2e)', () => {
     expect(b(res).code).toBe('EVENT_NOT_FOUND');
   });
 
-  it('PUT attendance saves, recomputes counts, bumps version, persists', async () => {
+  it('PUT attendance saves, recomputes counts, persists', async () => {
     const res = await http()
       .put('/events/E101/attendance')
       .send({ updates: [{ memberId: 'M03', status: 'attended' }] })
       .expect(200);
-    expect(b(res).data.attendanceVersion).toBe(1);
     expect(b(res).data.counts).toEqual({ registered: 4, attended: 2, absent: 2, notRecorded: 0 });
     const again = await http().get('/events/E101').expect(200);
     expect(b(again).data.counts.attended).toBe(2);
@@ -76,7 +73,7 @@ describe('Events + Feedback (e2e)', () => {
     const bad = await http().put('/events/E101/attendance').send(body).expect(400);
     if (_name === 'unknown member') expect(b(bad).code).toBe('ATTENDANCE_MEMBER_NOT_FOUND');
     const res = await http().get('/events/E101').expect(200);
-    expect(b(res).data.attendanceVersion).toBe(0);
+    expect(b(res).data.counts).toEqual({ registered: 4, attended: 1, absent: 2, notRecorded: 1 });
   });
 
   it('PUT attendance returns 503 SAVE_FAILED_SIMULATED when SIMULATE_SAVE_FAILURE=true and saves nothing', async () => {
@@ -89,28 +86,6 @@ describe('Events + Feedback (e2e)', () => {
     delete process.env.SIMULATE_SAVE_FAILURE;
     const after = await http().get('/events/E101').expect(200);
     expect(b(after).data.counts.attended).toBe(1);
-  });
-
-  it('PUT attendance with no real change keeps the version', async () => {
-    const res = await http()
-      .put('/events/E101/attendance')
-      .send({ updates: [{ memberId: 'M01', status: 'attended' }] })
-      .expect(200);
-    expect(b(res).data.attendanceVersion).toBe(0);
-  });
-
-  it('PUT attendance bumps the version once per request with several changes', async () => {
-    const res = await http()
-      .put('/events/E101/attendance')
-      .send({
-        updates: [
-          { memberId: 'M01', status: 'attended' },
-          { memberId: 'M03', status: 'absent' },
-          { memberId: 'M02', status: 'attended' },
-        ],
-      })
-      .expect(200);
-    expect(b(res).data.attendanceVersion).toBe(1);
   });
 
   it('GET /feedback lists only the notes of E101', async () => {
@@ -144,7 +119,6 @@ describe('Events + Feedback (e2e)', () => {
     await seed.seed();
     await seed.seed();
     const res = await http().get('/events/E101').expect(200);
-    expect(b(res).data.attendanceVersion).toBe(1);
     expect(b(res).data.counts.attended).toBe(0);
     const model = t.app.get<Model<EventEntity>>(getModelToken(EventEntity.name));
     expect(await model.countDocuments()).toBe(1);
@@ -158,7 +132,6 @@ describe('Events + Feedback (e2e)', () => {
       .expect(200);
     await seed.reset();
     const res = await http().get('/events/E101').expect(200);
-    expect(b(res).data.attendanceVersion).toBe(0);
     expect(b(res).data.counts).toEqual({ registered: 4, attended: 1, absent: 2, notRecorded: 1 });
   });
 });

@@ -40,21 +40,13 @@ const itemSchema = z.strictObject({
   feedbackIds: z.array(z.string()),
   unverifiedFeedbackIds: z.array(z.string()).describe('IDs not in F01–F08: not evidence, computed on read'),
 });
-const countsSchema = z.strictObject({
-  registered: z.number().int(),
-  attended: z.number().int(),
-  absent: z.number().int(),
-  notRecorded: z.number().int(),
-});
 const briefingSchema = z.strictObject({
   overview: z.string(),
-  attendanceSnapshot: countsSchema.describe('Counts at generation time, set by code'),
   themes: z.array(itemSchema.extend({ kind: z.enum(ThemeKind) })),
   conflicts: z.array(itemSchema),
   followUps: z.array(itemSchema),
   model: z.string(),
   generatedAt: z.string().describe('ISO date'),
-  attendanceVersion: z.number().int(),
   editedByHuman: z.boolean(),
   updatedAt: z.string().describe('ISO date'),
 });
@@ -63,6 +55,5 @@ export const briefingStateSchema = z.strictObject({
   current: briefingSchema.nullable(),
   draft: briefingSchema.nullable(),
   stale: z.boolean().describe('attendance of some member differs from the roster current was generated from'),
-  attendanceVersion: z.number().int(),
 });
 export type BriefingStateDto = z.infer<typeof briefingStateSchema>;
