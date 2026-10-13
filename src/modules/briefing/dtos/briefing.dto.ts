@@ -62,7 +62,7 @@ const briefingSchema = z.strictObject({
 export const briefingStateSchema = z.strictObject({
   current: briefingSchema.nullable(),
   draft: briefingSchema.nullable(),
-  stale: z.boolean().describe('current.attendanceVersion differs from the event attendanceVersion'),
+  stale: z.boolean().describe('attendance of some member differs from the roster current was generated from'),
   attendanceVersion: z.number().int(),
 });
 export type BriefingStateDto = z.infer<typeof briefingStateSchema>;
