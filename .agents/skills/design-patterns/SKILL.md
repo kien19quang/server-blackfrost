@@ -44,6 +44,8 @@ GET → POST → PUT → DELETE (PATCH sau PUT). Cùng method: route tĩnh trư�
 
 Service gọi service module khác qua DI (module export), không inject Model của module khác.
 
+`@Prop(...)` đặt trên một dòng riêng, tên trường ở dòng dưới; các trường cách nhau một dòng trống (comment nếu có đặt trên `@Prop`). Không viết `@Prop(...) name: string;` trên cùng một dòng.
+
 `@Prop` kiểu ObjectId viết `type: MongooseSchema.Types.ObjectId` (`import { Schema as MongooseSchema } from 'mongoose'`), không `type: Types.ObjectId`.
 
 ## Validate: Zod v4 (Standard Schema của Nest v12)
