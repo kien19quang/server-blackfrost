@@ -13,20 +13,17 @@ interface IItem {
 }
 interface IBriefing {
   overview: string;
-  attendanceSnapshot: { registered: number; attended: number; absent: number; notRecorded: number };
   themes: (IItem & { kind: string })[];
   conflicts: IItem[];
   followUps: IItem[];
   model: string;
   generatedAt: string;
-  attendanceVersion: number;
   editedByHuman: boolean;
 }
 interface IState {
   current: IBriefing | null;
   draft: IBriefing | null;
   stale: boolean;
-  attendanceVersion: number;
 }
 const data = (r: request.Response) => (r.body as { data: IState }).data;
 const code = (r: request.Response) => (r.body as { code?: string }).code;
@@ -77,10 +74,10 @@ describe('Briefing (e2e)', () => {
 
   it('GET /briefing is empty before the first generate', async () => {
     const res = await http().get('/briefing').expect(200);
-    expect(data(res)).toEqual({ current: null, draft: null, stale: false, attendanceVersion: 0 });
+    expect(data(res)).toEqual({ current: null, draft: null, stale: false });
   });
 
-  it('first generate writes current with code-computed snapshot and model name', async () => {
+  it('first generate writes current with the model name', async () => {
     const res = await generate().expect(201);
     const { current, draft, stale } = data(res);
     expect(draft).toBeNull();
@@ -88,9 +85,7 @@ describe('Briefing (e2e)', () => {
     expect(current).toMatchObject({
       overview: 'first',
       model: 'scripted',
-      attendanceVersion: 0,
       editedByHuman: false,
-      attendanceSnapshot: { registered: 4, attended: 1, absent: 2, notRecorded: 1 },
     });
     expect(current?.themes[0]).toMatchObject({ kind: 'opinion', feedbackIds: ['F01'], unverifiedFeedbackIds: [] });
     expect(data(await http().get('/briefing')).current?.overview).toBe('first');
@@ -122,17 +117,12 @@ describe('Briefing (e2e)', () => {
   it('is stale after attendance changes, and generate then goes to the draft only', async () => {
     await generate().expect(201);
     await attend();
-    expect(data(await http().get('/briefing'))).toMatchObject({ stale: true, attendanceVersion: 1 });
+    expect(data(await http().get('/briefing'))).toMatchObject({ stale: true });
 
     scripted.next = content('second');
     const res = data(await generate().expect(201));
     expect(res.current?.overview).toBe('first');
-    expect(res.current?.attendanceVersion).toBe(0);
-    expect(res.draft).toMatchObject({
-      overview: 'second',
-      attendanceVersion: 1,
-      attendanceSnapshot: { attended: 2, notRecorded: 0 },
-    });
+    expect(res.draft?.overview).toBe('second');
     expect(res.stale).toBe(true);
   });
 
@@ -142,7 +132,7 @@ describe('Briefing (e2e)', () => {
       .put('/events/E101/attendance')
       .send({ updates: [{ memberId: 'M01', status: 'attended' }] })
       .expect(200);
-    expect(data(await http().get('/briefing'))).toMatchObject({ stale: false, attendanceVersion: 0 });
+    expect(data(await http().get('/briefing'))).toMatchObject({ stale: false });
   });
 
   it('is not stale once attendance is changed back to what the briefing was generated from', async () => {
@@ -155,7 +145,7 @@ describe('Briefing (e2e)', () => {
     await setM03('attended');
     expect(data(await http().get('/briefing')).stale).toBe(true);
     await setM03('not_recorded');
-    expect(data(await http().get('/briefing'))).toMatchObject({ stale: false, attendanceVersion: 2 });
+    expect(data(await http().get('/briefing'))).toMatchObject({ stale: false });
   });
 
   it('is stale when two members swap statuses, even though the counts are unchanged', async () => {
@@ -171,7 +161,6 @@ describe('Briefing (e2e)', () => {
       .expect(200);
     const state = data(await http().get('/briefing'));
     expect(state.stale).toBe(true);
-    expect(state.current?.attendanceSnapshot).toEqual({ registered: 4, attended: 1, absent: 2, notRecorded: 1 });
   });
 
   it('generating again overwrites the draft, never current', async () => {
@@ -211,7 +200,7 @@ describe('Briefing (e2e)', () => {
     scripted.next = content('second');
     await generate().expect(201);
     const res = data(await http().post('/briefing/draft/replace').expect(201));
-    expect(res.current).toMatchObject({ overview: 'second', editedByHuman: false, attendanceVersion: 1 });
+    expect(res.current).toMatchObject({ overview: 'second', editedByHuman: false });
     expect(res.draft).toBeNull();
     expect(res.stale).toBe(false);
   });
@@ -251,7 +240,6 @@ describe('Briefing (e2e)', () => {
       editedByHuman: true,
       model: before.model,
       generatedAt: before.generatedAt,
-      attendanceVersion: before.attendanceVersion,
     });
     expect(res.current?.themes).toEqual([
       { text: 'Mine', kind: 'fact', feedbackIds: ['F02', 'F09'], unverifiedFeedbackIds: ['F09'] },
@@ -318,13 +306,11 @@ describe('Briefing (e2e)', () => {
       await withDraft();
       const keptOld = data(await merge({ ...pickNone('current'), overview: 'current' }).expect(201));
       expect(keptOld.stale).toBe(true);
-      expect(keptOld.current?.attendanceVersion).toBe(0);
 
       scripted.next = two('newer overview', 'newer');
       await generate().expect(201);
       const tookNew = data(await merge({ ...pickNone('current'), overview: 'draft' }).expect(201));
       expect(tookNew.stale).toBe(false);
-      expect(tookNew.current?.attendanceVersion).toBe(1);
     });
 
     it('taking the whole draft is not a human edit (same as replace)', async () => {

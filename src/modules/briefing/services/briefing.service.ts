@@ -72,11 +72,9 @@ export class BriefingService {
     const now = new Date();
     const generated: IStoredBriefing = {
       ...content,
-      attendanceSnapshot: event.counts,
       rosterSnapshot: Object.fromEntries(event.members.map((m) => [m.id, m.attendance])),
       model: this.provider.model,
       generatedAt: now,
-      attendanceVersion: event.attendanceVersion,
       editedByHuman: false,
       updatedAt: now,
     };
@@ -116,9 +114,7 @@ export class BriefingService {
       themes: pickItems('themes', current.themes, draft.themes, dto.themes),
       conflicts: pickItems('conflicts', current.conflicts, draft.conflicts, dto.conflicts),
       followUps: pickItems('followUps', current.followUps, draft.followUps, dto.followUps),
-      attendanceSnapshot: base.attendanceSnapshot,
       rosterSnapshot: base.rosterSnapshot,
-      attendanceVersion: base.attendanceVersion,
       model: base.model,
       generatedAt: base.generatedAt,
       editedByHuman: !wholeDraft,
@@ -206,7 +202,6 @@ export class BriefingService {
       current: view(doc.current),
       draft: view(doc.draft),
       stale: doc.current !== null && isStale(doc.current, event),
-      attendanceVersion: event.attendanceVersion,
     };
   }
 }

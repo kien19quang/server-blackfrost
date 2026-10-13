@@ -25,12 +25,10 @@ export interface IBriefingContent {
 
 // Persisted shape: `unverifiedFeedbackIds` is computed on read, never stored.
 export interface IStoredBriefing extends IBriefingContent {
-  attendanceSnapshot: IAttendanceCounts;
   // Each member's status at generation time; stale compares against it. Internal, not returned by the API.
   rosterSnapshot: Record<string, AttendanceStatus>;
   model: string;
   generatedAt: Date;
-  attendanceVersion: number;
   editedByHuman: boolean;
   updatedAt: Date;
 }

@@ -19,11 +19,11 @@ Each step was a `feat/…`/`fix/…` branch, reviewed and merged into local `mai
 
 | Collection | Document | Notes |
 | --- | --- | --- |
-| `events` | `{ eventId, name, venue, status, attendanceVersion, members: [{ memberId, name, attendance }] }` | Members are embedded: 4 fixed rows, always read and written with the event. Counts are **not stored**; they are computed from `members` on every read, so they cannot drift. |
+| `events` | `{ eventId, name, venue, status, members: [{ memberId, name, attendance }] }` | Members are embedded: 4 fixed rows, always read and written with the event. Counts are **not stored**; they are computed from `members` on every read, so they cannot drift. |
 | `feedbacknotes` | `{ eventId, feedbackId, text }` | Read-only. Belongs to one event (unique `eventId + feedbackId`, so another event can reuse `F01`), but not linked to members, by design (anonymous). The API and the briefing only read the notes of `E101`. |
-| `briefings` | `{ eventId, current, draft }` | One document per event. `current` and `draft` have the same shape: `overview`, `themes [{ text, kind, feedbackIds }]`, `conflicts`, `followUps`, `attendanceSnapshot`, `rosterSnapshot` (internal, not returned), `model`, `generatedAt`, `attendanceVersion`, `editedByHuman`, `updatedAt`. |
+| `briefings` | `{ eventId, current, draft }` | One document per event. `current` and `draft` have the same shape: `overview`, `themes [{ text, kind, feedbackIds }]`, `conflicts`, `followUps`, `rosterSnapshot` (internal, not returned), `model`, `generatedAt`, `editedByHuman`, `updatedAt`. |
 
-- **Stale = roster snapshot, not version.** On generate the briefing stores each member's status (`rosterSnapshot`). It is stale when any member's current status differs from that snapshot. So changing a member and then changing them back is not stale, while swapping two members is stale even though the counts are the same (the overview may name them). Comparing counts alone would miss that swap; comparing `attendanceVersion` would flag the change-back. `attendanceVersion` (+1 per save that changes a status) is kept as metadata.
+- **Stale = roster snapshot.** On generate the briefing stores each member's status (`rosterSnapshot`). It is stale when any member's current status differs from that snapshot. So changing a member and then changing them back is not stale, while swapping two members is stale even though the counts are the same (the overview may name them). Comparing counts alone would miss that swap; a save counter (`attendanceVersion`, used in an earlier version) would flag the change-back, so it was removed together with the stored counts snapshot: the roster snapshot is the single source.
 - **`unverifiedFeedbackIds` is computed on read**, never stored, by comparing cited IDs with the stored feedback. A coordinator edit or a model reply that cites `F99` is kept as written but flagged. The UI shows it as a red "unverified" tag that does not open as evidence.
 - Seed uses `$setOnInsert`, so restarts never overwrite saved attendance. `yarn reset` is the only way back to seed and is never run automatically.
 - **Internal vs API names**: the DB stores `eventId/name/memberId/feedbackId`, while the API exposes the contract names `id/title/id/id`. The mapping lives in one `toDto` per service.
@@ -34,14 +34,14 @@ Envelope `{ data }`; errors `{ statusCode, code, message }` with English message
 
 | Endpoint | Behaviour |
 | --- | --- |
-| `GET /events/E101` | Event, members, computed `counts`, `attendanceVersion`. 404 `EVENT_NOT_FOUND` for other IDs. |
+| `GET /events/E101` | Event, members, computed `counts`. 404 `EVENT_NOT_FOUND` for other IDs. |
 | `PUT /events/E101/attendance` | `{ updates: [{ memberId, status }] }`, only the changed members. Unknown member → 400 `ATTENDANCE_MEMBER_NOT_FOUND` and nothing is written (checked before writing). |
 | `GET /feedback` | `[{ id, text }]` |
-| `GET /briefing` | `{ current, draft, stale, attendanceVersion }` |
+| `GET /briefing` | `{ current, draft, stale }` |
 | `POST /briefing/generate` | No current yet → becomes `current`. Otherwise it **only** overwrites `draft`. Provider failure or a reply that breaks the schema → 502 `BRIEFING_GENERATION_FAILED`, and nothing is written. |
 | `POST /briefing/draft/replace` | The draft becomes current (`editedByHuman=false`) and the draft is cleared. 409 `BRIEFING_NO_DRAFT` without a draft. |
 | `DELETE /briefing/draft` | Discards the draft. 409 without one. |
-| `PUT /briefing` | Coordinator edit of `current` (text and `feedbackIds` of every item). Sets `editedByHuman=true` and keeps `model`, `generatedAt`, `attendanceVersion`. 404 `BRIEFING_NOT_FOUND` before the first generate. |
+| `PUT /briefing` | Coordinator edit of `current` (text and `feedbackIds` of every item). Sets `editedByHuman=true` and keeps `model`, `generatedAt`, `rosterSnapshot`. 404 `BRIEFING_NOT_FOUND` before the first generate. |
 
 **No overwrite without an explicit action**: the only writes to `current` are the first generate, an explicit replace, and the coordinator's own edit. With `SIMULATE_SAVE_FAILURE=true`, every write endpoint returns 503 `SAVE_FAILED_SIMULATED` before touching the DB or the model.
 
@@ -56,7 +56,7 @@ Envelope `{ data }`; errors `{ statusCode, code, message }` with English message
 - Official `openai` SDK with **structured outputs** (`zodResponseFormat`) built from the same Zod schema (`aiBriefingSchema`) that the service uses to validate the reply. The reply is parsed again on the server; nothing from the model is trusted unchecked.
 - **Prompt injection**: the event, roster, counts and notes are sent as JSON inside `<data>` tags. The system prompt says that everything inside `<data>` is material to summarise, never instructions.
 - Rules in the system prompt: use only the given numbers; `not_recorded` is not absent; never invent reasons for absence; themes are recurring topics that group every note on the same subject (not one theme per note; counts stated plainly, never "everyone"); tag each theme `fact | opinion | suggestion`, with feedback treated as reported opinion rather than fact; a request stays a suggestion, not a plan; conflicts are kept side by side, not merged into consensus; every item cites feedback IDs; ignore non-actionable notes (F08).
-- `attendanceSnapshot`, `model`, `generatedAt` and `attendanceVersion` are set by code, not by the model.
+- `rosterSnapshot`, `model` and `generatedAt` are set by code, not by the model. The prompt gets counts computed in code, so the model never counts.
 - No caching: every generate is a fresh model call.
 
 ## Tools and AI used

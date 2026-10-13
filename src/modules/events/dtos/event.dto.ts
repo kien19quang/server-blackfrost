@@ -8,7 +8,6 @@ export const eventResponseSchema = z.strictObject({
   title: z.string(),
   venue: z.string(),
   status: z.string(),
-  attendanceVersion: z.number().int().describe('Increases by 1 on every attendance save that changes a status'),
   members: z.array(z.strictObject({ id: z.string(), name: z.string(), attendance: attendanceSchema })),
   counts: z
     .strictObject({

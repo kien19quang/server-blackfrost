@@ -44,7 +44,6 @@ export class EventService {
     const changed = dto.updates.filter((u) => byId.get(u.memberId)!.attendance !== u.status);
     if (changed.length) {
       for (const u of changed) byId.get(u.memberId)!.attendance = u.status;
-      event.attendanceVersion += 1;
       await event.save();
     }
     return this.toDto(event);
@@ -68,7 +67,6 @@ export class EventService {
       title: e.name,
       venue: e.venue,
       status: e.status,
-      attendanceVersion: e.attendanceVersion,
       members,
       counts: countAttendance(members),
     };
