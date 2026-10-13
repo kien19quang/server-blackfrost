@@ -62,7 +62,7 @@ Envelope `{ data }`; errors `{ statusCode, code, message }` with English message
 ## Tools and AI used
 
 - Built by a team of Claude Code agents (CTO, backend, frontend, QA) coordinated through Paperclip issues, with the Board reviewing scope decisions. The CTO reviewed every branch against the contract before merging.
-- Runtime model: OpenAI `gpt-5.4-mini` (`AI_MODEL` in the server `.env`).
+- Runtime model: OpenAI `gpt-5.4-mini` (`AI_MODEL` in the server `.env`). Other vendors go through the same OpenAI SDK by setting `AI_BASE_URL` to their OpenAI-compatible endpoint; no extra provider class. The model must support JSON-schema structured output, otherwise the reply fails validation and shows as a generation error.
 - QA drove the UI with Playwright (Chromium) and cross-checked the API with `fetch`; screenshots are in `docs/checks/`.
 
 ## Code reuse

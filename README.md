@@ -24,7 +24,7 @@ API (envelope `{ data }`, errors `{ statusCode, code, message }`, schemas in Swa
 
 ## AI briefing
 
-- `AI_PROVIDER`: `openai` (real model, `AI_MODEL`, key in `AI_API_KEY` or `OPENAI_API_KEY`), `mock` (deterministic, no network) or `fail` (every generate returns 502 `BRIEFING_GENERATION_FAILED`).
+- `AI_PROVIDER`: `openai` (real model, `AI_MODEL`, key in `AI_API_KEY` or `OPENAI_API_KEY`; `AI_BASE_URL` points it at any OpenAI-compatible API such as OpenRouter), `mock` (deterministic, no network) or `fail` (every generate returns 502 `BRIEFING_GENERATION_FAILED`).
 - `GET /briefing` → `{ current, draft, stale }`; each item has `text`, `feedbackIds`, `unverifiedFeedbackIds` (computed on read).
 - `POST /briefing/generate`: first time → `current`; afterwards → `draft` only. `POST /briefing/draft/replace` / `DELETE /briefing/draft` apply or discard the whole draft (409 `BRIEFING_NO_DRAFT` without one). `POST /briefing/draft/merge` body `{ overview: 'current'|'draft', themes|conflicts|followUps: { current: number[], draft: number[] } }` builds a new current from the picked items of both stored versions (kept current items first, then draft items) and clears the draft; only indexes are sent, never content (400 `BRIEFING_MERGE_INVALID_INDEX` on a duplicate or out-of-range index). `PUT /briefing` saves the coordinator edit (404 `BRIEFING_NOT_FOUND` before the first generate).
 - `yarn check:ai` makes one real model call on the seed data and prints the validated briefing plus any invented feedback IDs.

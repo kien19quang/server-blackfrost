@@ -7,7 +7,7 @@ import { SEED_EVENT, SEED_FEEDBACK } from './modules/events/services/seed.servic
 // Prints the schema-validated briefing and any feedback IDs the model invented.
 async function main() {
   const model = process.env.AI_MODEL || 'gpt-5.4-mini';
-  const provider = new OpenAiProvider(process.env.AI_API_KEY || undefined, model);
+  const provider = new OpenAiProvider(process.env.AI_API_KEY || undefined, model, process.env.AI_BASE_URL || undefined);
   const raw = await provider.generate({
     eventName: SEED_EVENT.name,
     venue: SEED_EVENT.venue,
