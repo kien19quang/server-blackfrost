@@ -6,7 +6,7 @@ Two independent repos: `server-blackfrost` (NestJS 12, MongoDB, port 3301) and `
 
 ## Delivery steps
 
-1. **Scaffold** both repos from the Education project infrastructure (lint, Prettier, Jest/Vitest, CI, Docker, response envelope, exception filter, Zod validation pipe, axios + react-query setup, sidebar `AppLayout`). Only `/health` was kept as a feature.
+1. **Scaffold** both repos from the Education project infrastructure (lint, Prettier, Jest/Vitest, CI, Docker, response envelope, exception filter, Zod validation pipe, axios + react-query setup, sidebar `AppLayout`). No feature code was kept.
 2. **API contract first.** The CTO wrote the contract (response shapes, attendance body, version rule, error codes, rules for writing `current`) before any feature code, so server and web could be built in parallel.
 3. **Server data/API**: event, members and feedback with idempotent seed + explicit reset; attendance save; feedback read.
 4. **Server AI briefing** and **web layout/attendance/feedback** in parallel, then **web briefing page** (note modal, edit modal, draft comparison). After QA, review changes on 12/10: page layout aligned with web-education (gray shell, one card per page), Briefing split into fit-content tabs, note modal replaced by a popover, edit modal centered with a fixed 70vh body, and the prompt changed so themes group notes by topic.
